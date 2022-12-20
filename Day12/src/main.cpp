@@ -211,24 +211,34 @@ size_t find_path_length(const std::string& height_map, char starting_char = 'S',
     }
     size_t starting_pos = height_map.find(starting_char); //iterate over all .find
     size_t ending_pos = height_map.find(ending_char);
-    if (starting_pos == std::string::npos)
-        return 0;
-    pos_history.emplace(PosLenDir(starting_pos, 0, 4));
-    size_t checked = 0; //there's at least one element because I pushed it to the vector in the line above
+    size_t shortest = path_len, shortest_so_far = path_len; //inefficient: I'm repeating the whole search for all possible starting positions, while I could check if I meet another char with elevation 'a' during the path and drop out early from the loop
+    while (starting_pos != std::string::npos) 
+    {   
+        pos_history.emplace(PosLenDir(starting_pos, 0, 4));
+        size_t checked = 0; //there's at least one element because I pushed it to the vector in the line above
     
-    while (!pos_history.empty())
-    {
-        PosLenDir curr_poslendir = pos_history.front();
-        pos_history.pop();
-        checked++;
-        futures.emplace(std::async(std::launch::async, find_path, height_map, &pos_history, &dist_to_pos, &curr_poslendir, ending_pos));
-        while (!futures.empty()) {
-            futures.front().get();
-            futures.pop();
+        while (!pos_history.empty())
+        {
+            PosLenDir curr_poslendir = pos_history.front();
+            pos_history.pop();
+            checked++;
+            futures.emplace(std::async(std::launch::async, find_path, height_map, &pos_history, &dist_to_pos, &curr_poslendir, ending_pos));
+            while (!futures.empty()) {
+                futures.front().get();
+                futures.pop();
+            }
+        }
+        shortest_so_far = dist_to_pos[ending_pos].load();
+        if (shortest_so_far < shortest)
+            shortest = shortest_so_far;
+        starting_pos = height_map.find(starting_char, starting_pos+1);
+        for (size_t i = 0; i < path_len; ++i)
+        {
+            dist_to_pos[i].store(path_len);
         }
     }
 
-    return dist_to_pos[ending_pos].load(); //move from 0 to 1 counts as 1st step
+    return shortest;
     delete[] dist_to_pos;
 }
 
@@ -240,7 +250,7 @@ int main(int argc, char** argv)
 {
     /*std::cout << COLOR_TEXT<3, 4>("HELLOOOO") << std::endl;
     sum_str(std::cout, "Uno", "due", COLOR_TEXT<4,3>("tre"), COLOR_TEXT<3, 4>("QUATTRO"));*/
-    std::ifstream input(FILE_PATH<12>("test"), std::ifstream::in);
+    std::ifstream input(FILE_PATH<12>("input"), std::ifstream::in);
     if (!input)
         return 1;
     //get total number of spots characters
@@ -262,9 +272,9 @@ int main(int argc, char** argv)
     
     auto result1 = find_path_length(height_map);
 
-    auto result2 = find_path_length(height_map, 'a', 'S', iterative);
+    auto result2 = find_path_length(height_map, 'a', 'E');
 
-    std::cout << "Result1: " << result1 << "\n Result 2" << result2 << std::endl;
+    std::cout << "Result 1: " << result1 << "\nResult 2: " << result2 << std::endl;
 
     //PLAN:
     //Find the Start position (pair of char and position) and store it somewhere
