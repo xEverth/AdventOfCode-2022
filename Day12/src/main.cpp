@@ -5,10 +5,8 @@
 #include <utility>
 #include <numeric>
 #include <future>
-#include <functional>
 #include <atomic>
 #include <queue>
-#include <vector>
 #include <algorithm>
 
 template <int N>
@@ -47,7 +45,7 @@ bool is_adjacent(size_t curr_index, size_t other_index)
     bool is_right = (curr_index - other_index - 1) == 0;
     bool is_up = (other_index - curr_index - row_length) == 0;
     bool is_down = (curr_index - other_index - row_length) == 0;
-    std::cout << std::boolalpha << is_left << '\t' << is_right << '\t' << is_up << '\t' << is_down;
+    //std::cout << std::boolalpha << is_left << '\t' << is_right << '\t' << is_up << '\t' << is_down;
     return is_left || is_right || is_up || is_down;
 }
 
@@ -122,6 +120,8 @@ size_t inline go_down(size_t pos)
 //    DIR_RIGHT = 3,
 //    DIR_STARTING = 4
 //};
+// 
+// using enum directions
 //
 //constexpr std::initializer_list<directions> dir_list = {directions::DIR_UP, directions::DIR_DOWN, directions::DIR_LEFT, directions::DIR_RIGHT };
 //
