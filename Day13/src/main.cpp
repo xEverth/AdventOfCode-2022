@@ -11,16 +11,78 @@
 //If both values are lists, compare the first value of each list, then the second value, and so on.If the left list runs out of items first, the inputs are in the right order.If the right list runs out of items first, the inputs are not in the right order.If the lists are the same lengthand no comparison makes a decision about the order, continue checking the next part of the input.
 //If exactly one value is an integer, convert the integer to a list which contains that integer as its only value, then retry the comparison.For example, if comparing[0, 0, 0] and 2, convert the right value to[2](a list containing 2); the result is then found by instead comparing[0, 0, 0] and [2].
 
+//struct List;
+//
+//constexpr auto isList = std::holds_alternative<std::optional < List >>;
+//constexpr auto isInt = std::holds_alternative<std::optional<uint32_t>>;
+
 struct List
 {
     typedef std::optional<uint32_t> optInt;
     typedef std::optional < List > optList;
     typedef std::vector < std::variant < optInt, optList > > ListContent;
     ListContent content;
-    bool operator<(const List& other) {
-        //implement operation comparison
+    bool operator<(const List& other) const { //fix bad optional access
+        bool comparison_result = true;
+        size_t size1 = content.size(), size2 = other.content.size();
+        for (size_t i = 0; i < size1 && i < size2; ++i) { //after this cycle is complete, if content1 still has numbers
+            if (!comparison_result)
+                return false; //cuts some cycles
+            if (std::holds_alternative<optList>(content.at(i)) && std::holds_alternative<optList>(other.content.at(i))) //both are lists
+            {
+                if (std::get<optList>(content.at(i)).has_value() && std::get<optList>(other.content.at(i)).has_value())
+                {
+                    if (std::get<optList>(content.at(i)).value().content.size() > std::get<optList>(other.content.at(i)).value().content.size())
+                        return false;
+                    comparison_result &= std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).value();
+                } else if (!std::get<optList>(content.at(i)).has_value()) //LEFT is an empty list
+                {
+                    return true;
+                }
+                else
+                    return false;
+                //comparison_result &= std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).or_else(
+                //    [&comparison_result]() {comparison_result &= false; return std::optional<List>(0);} // maybe incorrect
+                //).value();
+            }
+            else if (std::holds_alternative<optInt>(content.at(i)) && std::holds_alternative<optInt>(other.content.at(i))) {
+                if (std::get<optInt>(content.at(i)).value_or(0) > std::get<optInt>(other.content.at(i)).value_or(10)) //should check if it HAS value
+                    return false;
+            }
+            else if (std::holds_alternative<optList>(content.at(i))) //RIGHT has a number
+            {
+                if (std::get<optList>(content.at(i)).has_value())
+                {
+                    auto& Left_list = std::get<optList>(content.at(i)).value();
+                    //comparison_result &= Left_list < List(Left_list.content.size(), std::get<optInt>(other.content.at(i)).value_or(0)); //converting right number to list
+                    comparison_result &= Left_list < List(std::get<optInt>(other.content.at(i)).value_or(0));
+                }
+                else
+                    return true;
+            }
+            else //RIGHT is a list, Left is a number
+            {
+                if (std::get<optList>(other.content.at(i)).has_value())
+                {
+                    auto& Right_list = std::get<optList>(other.content.at(i)).value();
+                    //comparison_result &= List(Right_list.content.size(), std::get<optInt>(content.at(i)).value_or(0)) < Right_list;
+                    comparison_result &= List(std::get<optInt>(content.at(i)).value_or(0)) < Right_list;
+                }
+                else
+                    return false;
+            }
+        }
+        return comparison_result;
     }
-    List(std::string inputstr) : content{}
+    explicit List(uint32_t val) : content{ val } {};
+    //probably shouldn't call the below one, no where it says I should create N elements. 
+    explicit List(size_t n, uint32_t val) : content(n, optInt{val}) {}; //std::variant<optInt, optList>{std::in_place_type<optInt>, val}
+    //{
+    //    content.reserve(n);
+    //    while (n--)
+    //        content.emplace_back(optInt{ val });
+    //}; //ncopies
+    List(std::string inputstr) noexcept : content{}
     {
         char level = 0; //used to count the indentation level
         for (size_t i = 0; i < inputstr.size(); ++i) //if string is empty, loop is not entered, so only a "std::optional<List> {}" is constructed in the vector
@@ -124,6 +186,7 @@ List::optInt getInt(std::variant < List::optInt, List::optList > self)
 
 int main(int argc, char** argv) {
     std::ifstream input(FILE_PATH<13>("test"), std::ifstream::in);
+    uint32_t result1 = 0, index = 1;
     std::string a, b, nl;
     while (input)
     {
@@ -136,6 +199,15 @@ int main(int argc, char** argv) {
             << "variant has any values?"
             << std::get<std::optional<List>>(list1.content[0]).has_value() << '\n';*/
         std::cout << "list1: " << printList(list1.content[0]) << '\n'
-                  << "list2: " << printList(list2.content[0]) << std::endl;
+                  << "list2: " << printList(list2.content[0]) << '\n';
+        if (list1 < list2)
+        {
+            std::cout << "True: List 1 < List 2 \t Index: " << index << '\n';
+            result1 += index;
+        }
+        else
+            std::cout << "False: List 1 > List 2\n";
+        ++index;
     }
+    std::cout << "Result 1: " << result1 << std::endl;
 }
