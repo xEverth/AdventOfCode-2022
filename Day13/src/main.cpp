@@ -3,78 +3,51 @@
 #include <optional>
 #include <variant>
 #include <charconv>
-#include <iterator>
-#include <numeric>
+#include <compare>
 
 //When comparing two values, the first value is called leftand the second value is called right.Then:
 //If both values are integers, the lower integer should come first.If the left integer is lower than the right integer, the inputs are in the right order.If the left integer is higher than the right integer, the inputs are not in the right order.Otherwise, the inputs are the same integer; continue checking the next part of the input.
 //If both values are lists, compare the first value of each list, then the second value, and so on.If the left list runs out of items first, the inputs are in the right order.If the right list runs out of items first, the inputs are not in the right order.If the lists are the same lengthand no comparison makes a decision about the order, continue checking the next part of the input.
 //If exactly one value is an integer, convert the integer to a list which contains that integer as its only value, then retry the comparison.For example, if comparing[0, 0, 0] and 2, convert the right value to[2](a list containing 2); the result is then found by instead comparing[0, 0, 0] and [2].
 
-//struct List;
-//
-//constexpr auto isList = std::holds_alternative<std::optional < List >>;
-//constexpr auto isInt = std::holds_alternative<std::optional<uint32_t>>;
-
-enum class CompResult
-{
-    Lower = -1,
-    Equal = 0,
-    Higher = +1
-};
 
 struct List
 {
-    using enum CompResult;
     typedef std::optional<uint32_t> optInt;
     typedef std::optional < List > optList;
     typedef std::vector < std::variant < optInt, optList > > ListContent;
     ListContent content;
-    bool operator<(const List& other) const {
-        return (Compare(other) == Lower); // True if it's lower, false if it's equal or higher
-    }
-    bool operator==(const List& other) const {
-        return (Compare(other) == Equal);
-    }
-    bool operator>(const List& other) const {
-        return (Compare(other) == Higher);
-    }
-    CompResult Compare(const List& other) const {
+    std::strong_ordering operator<=>(const List& other) const {
         size_t size1 = content.size(), size2 = other.content.size();
         size_t size_max = size2 > size1 ? size2 : size1;
         for (size_t i = 0; i < size_max; ++i) {
             if (i >= size2) //RIGHT is over before LEFT
-                return Higher;
+                return std::strong_ordering::greater;
             if (i >= size1) //LEFT is over before RIGHT
-                return Lower; // &true?
+                return std::strong_ordering::less; // &true?
             if (std::holds_alternative<optInt>(content.at(i)) && std::holds_alternative<optInt>(other.content.at(i))) { //If both items are Integers
                 if (std::get<optInt>(content.at(i)).value_or(0) == std::get<optInt>(other.content.at(i)).value_or(0)) //value_or checks if the Opt has value, the comparison checks if the number in the LEFT list is higher than the one in the RIGHT list. If left doesn't have value, it wins everytime. If right doesn't have value, the function should return false
                     continue; //Keep searching for the first "out of order" pair if they are equal
                 else if (std::get<optInt>(content.at(i)).value_or(0) < std::get<optInt>(other.content.at(i)).value_or(0))
-                    return Lower;
+                    return std::strong_ordering::less;
                 else
-                    return Higher;
+                    return std::strong_ordering::greater;
             } else if (std::holds_alternative<optList>(content.at(i)) && std::holds_alternative<optList>(other.content.at(i))) //Else if both items are Lists
             {
                 if (std::get<optList>(content.at(i)).has_value() && std::get<optList>(other.content.at(i)).has_value())
                 {
-                    //if (std::get<optList>(content.at(i)).value().content.size() > std::get<optList>(other.content.at(i)).value().content.size())
-                    //{
-                    //    //comparison_result &= false;
-                    //    return false;
-                    //}
                     if (std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).value())
-                        return Lower;
+                        return std::strong_ordering::less;
                     else if (std::get<optList>(content.at(i)).value() > std::get<optList>(other.content.at(i)).value())
-                        return Higher;
+                        return std::strong_ordering::greater;
                     //if they are equal, continue
                 }
                 else if (!std::get<optList>(content.at(i)).has_value() && !std::get<optList>(other.content.at(i)).has_value()) //If both lists are empty
                     continue;
                 else if (std::get<optList>(content.at(i)).has_value() && !std::get<optList>(other.content.at(i)).has_value()) //If RIGHT is an empty list
-                    return Higher;
+                    return std::strong_ordering::greater;
                 else if (!std::get<optList>(content.at(i)).has_value() && std::get<optList>(other.content.at(i)).has_value()) //If LEFT is an empty list
-                    return Lower;
+                    return std::strong_ordering::less;
                 //comparison_result &= std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).or_else(
                 //    [&comparison_result]() {comparison_result &= false; return std::optional<List>(0);} // maybe incorrect
                 //).value();
@@ -86,13 +59,13 @@ struct List
                     auto& Left_list = std::get<optList>(content.at(i)).value();
                     //comparison_result &= Left_list < List(Left_list.content.size(), std::get<optInt>(other.content.at(i)).value_or(0)); //converting right number to list
                     if (Left_list < List(std::get<optInt>(other.content.at(i)).value_or(0)))
-                        return Lower;
+                        return std::strong_ordering::less;
                     else if (Left_list > List(std::get<optInt>(other.content.at(i)).value_or(0)))
-                        return Higher;
+                        return std::strong_ordering::greater;
 
                 }
                 else //LEFT is an empty list
-                    return Lower;
+                    return std::strong_ordering::less;
             }
             else //RIGHT item is a List, LEFT item is an Integer
             {
@@ -101,24 +74,17 @@ struct List
                     auto& Right_list = std::get<optList>(other.content.at(i)).value();
                     //comparison_result &= List(Right_list.content.size(), std::get<optInt>(content.at(i)).value_or(0)) < Right_list;
                     if (List(std::get<optInt>(content.at(i)).value_or(0)) < Right_list)
-                        return Lower;
+                        return std::strong_ordering::less;
                     else if (List(std::get<optInt>(content.at(i)).value_or(0)) > Right_list)
-                        return Higher;
+                        return std::strong_ordering::greater;
                 }
                 else //RIGHT is an empty list
-                    return Higher;
+                    return std::strong_ordering::greater;
             }
         }
-        return Equal;
+        return std::strong_ordering::equal;
     }
     explicit List(uint32_t val) : content{ val } {};
-    //probably shouldn't call the below one, no where it says I should create N elements. 
-    //explicit List(size_t n, uint32_t val) : content(n, optInt{val}) {}; //std::variant<optInt, optList>{std::in_place_type<optInt>, val}
-    //{
-    //    content.reserve(n);
-    //    while (n--)
-    //        content.emplace_back(optInt{ val });
-    //}; //ncopies
     List(std::string inputstr) noexcept : content{}
     {
         char level = 0; //used to count the indentation level
