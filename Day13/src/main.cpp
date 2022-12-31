@@ -129,14 +129,6 @@ struct List
     }
 };
 
-//void printList(const List& list)
-//{
-//    for (auto& el : list.content)
-//    {
-//        printList(el);
-//    }
-//}
-
 std::string printList( const std::variant < List::optInt, List::optList>& it, std::string sep = ",")
 { //need to handle the nullopt cases by printing nothing
     std::string result;
@@ -167,6 +159,11 @@ std::string printList( const std::variant < List::optInt, List::optList>& it, st
     return result;
 }
 
+std::string printContent(const List& list, std::string sep = ",")
+{
+    return printList(list.content[0], sep);
+}
+
 List::optInt getInt(std::variant < List::optInt, List::optList > self)
 {
     return std::get<List::optInt>(self).value();
@@ -188,8 +185,8 @@ int main(int argc, char** argv) {
         //std::cout << std::boolalpha
         //    << "variant has any values?"
         //    << std::get<std::optional<List>>(list1.content[0]).has_value() << '\n';
-        //std::cout   << /*"list1: " <<*/ printList(list1.content[0]) << '\n'
-        //            << /*"list2: " <<*/ printList(list2.content[0]) << '\n' << std::endl;
+        //std::cout   << /*"list1: " <<*/ printContent(list1) << '\n'
+        //            << /*"list2: " <<*/ printContent(list2) << '\n' << std::endl;
         if (list1 < list2)
         {
             //std::cout << "True: List 1 < List 2 \t Index: " << index << '\n';
@@ -213,6 +210,6 @@ int main(int argc, char** argv) {
 
     //for (auto it = all_signals.begin(); it != all_signals.end(); ++it)
     //{
-    //    std::cout << std::distance(all_signals.begin(), it) +1 << ": " << printList(it->content[0]) << std::endl;
+    //    std::cout << std::distance(all_signals.begin(), it) +1 << ": " << printContent(*it) << std::endl;
     //}
 }
