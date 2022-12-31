@@ -22,31 +22,42 @@ struct List
     typedef std::optional < List > optList;
     typedef std::vector < std::variant < optInt, optList > > ListContent;
     ListContent content;
-    bool operator<(const List& other) const { //fix bad optional access
+    bool operator<(const List& other) const { 
         bool comparison_result = true;
         size_t size1 = content.size(), size2 = other.content.size();
-        for (size_t i = 0; i < size1 && i < size2; ++i) { //after this cycle is complete, if content1 still has numbers
+        size_t size_max = size2 > size1 ? size2 : size1;
+        for (size_t i = 0; i < size_max; ++i) {
             if (!comparison_result)
                 return false; //cuts some cycles
+            if (i >= size2) //RIGHT is over before left
+                return comparison_result;
+            if (i >= size1)
+                return comparison_result&true;
             if (std::holds_alternative<optList>(content.at(i)) && std::holds_alternative<optList>(other.content.at(i))) //both are lists
             {
                 if (std::get<optList>(content.at(i)).has_value() && std::get<optList>(other.content.at(i)).has_value())
                 {
                     if (std::get<optList>(content.at(i)).value().content.size() > std::get<optList>(other.content.at(i)).value().content.size())
+                    {
+                        //comparison_result &= false;
                         return false;
+                    }
                     comparison_result &= std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).value();
-                } else if (!std::get<optList>(content.at(i)).has_value()) //LEFT is an empty list
-                {
-                    return true;
                 }
-                else
+                else if (!std::get<optList>(content.at(i)).has_value()) //LEFT is an empty list
+                {
+                    return comparison_result & true;
+                }
+                else if (!std::get<optList>(other.content.at(i)).has_value())// RIGHT is an empty list
                     return false;
+                else
+                    std::cout << "NON HO CAPITO" << std::endl;
                 //comparison_result &= std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).or_else(
                 //    [&comparison_result]() {comparison_result &= false; return std::optional<List>(0);} // maybe incorrect
                 //).value();
             }
             else if (std::holds_alternative<optInt>(content.at(i)) && std::holds_alternative<optInt>(other.content.at(i))) {
-                if (std::get<optInt>(content.at(i)).value_or(0) > std::get<optInt>(other.content.at(i)).value_or(10)) //should check if it HAS value
+                if (std::get<optInt>(content.at(i)).value_or(0) > std::get<optInt>(other.content.at(i)).value_or(0)) //value_or checks if the Opt has value, the comparison checks if the number in the LEFT list is higher than the one in the RIGHT list. If left doesn't have value, it wins everytime. If right doesn't have value, the function should return false
                     return false;
             }
             else if (std::holds_alternative<optList>(content.at(i))) //RIGHT has a number
@@ -76,7 +87,7 @@ struct List
     }
     explicit List(uint32_t val) : content{ val } {};
     //probably shouldn't call the below one, no where it says I should create N elements. 
-    explicit List(size_t n, uint32_t val) : content(n, optInt{val}) {}; //std::variant<optInt, optList>{std::in_place_type<optInt>, val}
+    //explicit List(size_t n, uint32_t val) : content(n, optInt{val}) {}; //std::variant<optInt, optList>{std::in_place_type<optInt>, val}
     //{
     //    content.reserve(n);
     //    while (n--)
@@ -111,7 +122,8 @@ struct List
                 if (i + 1 == next_close)
                 {
                     content.emplace_back(std::optional<List> {});
-                    break;
+                    i += 2;
+                    continue;
                 }
                 std::string inner_list = inputstr.substr(i+1, next_close-i-1); //what if the substr doesn't end with a close?
                 content.emplace_back(List(inner_list));
@@ -121,14 +133,13 @@ struct List
                     continue;
             }
             uint32_t curr = 0;
-            /*if (inputstr.at(i) == ']')
-                break;*/
 
 
             if (next_comma != std::string::npos)
             {
                 auto convres = std::from_chars(inputstr.data() + i, inputstr.data() + next_comma+1, curr);
-                content.emplace_back(curr);
+                if (convres.ec != std::errc::invalid_argument)
+                    content.emplace_back(curr);
                 i = next_comma;
             }
             else if (i != inputstr.size() )
@@ -169,7 +180,7 @@ std::string printList( const std::variant < List::optInt, List::optList>& it, st
             result += "]";
         }
         else {
-            result += "[{empty}]";
+            result += "[]"; // {empty}
         }
     }
     else
@@ -198,8 +209,8 @@ int main(int argc, char** argv) {
         /*std::cout << std::boolalpha
             << "variant has any values?"
             << std::get<std::optional<List>>(list1.content[0]).has_value() << '\n';*/
-        std::cout << "list1: " << printList(list1.content[0]) << '\n'
-                  << "list2: " << printList(list2.content[0]) << '\n';
+        std::cout   << /*"list1: " <<*/ printList(list1.content[0]) << '\n'
+                    << /*"list2: " <<*/ printList(list2.content[0]) << '\n' << std::endl;
         if (list1 < list2)
         {
             std::cout << "True: List 1 < List 2 \t Index: " << index << '\n';

@@ -25,5 +25,6 @@
   <ItemGroup>
     <Text Include="src\13test.txt" />
     <Text Include="src\13input.txt" />
+    <Text Include="src\13onebyone.txt" />
   </ItemGroup>
 </Project>
