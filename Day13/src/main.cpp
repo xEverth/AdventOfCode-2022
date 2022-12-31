@@ -17,6 +17,7 @@ struct List
     typedef std::optional < List > optList;
     typedef std::vector < std::variant < optInt, optList > > ListContent;
     ListContent content;
+    bool operator==(const List& other) const = default;
     std::strong_ordering operator<=>(const List& other) const {
         size_t size1 = content.size(), size2 = other.content.size();
         size_t size_max = size2 > size1 ? size2 : size1;
@@ -26,21 +27,14 @@ struct List
             if (i >= size1) //LEFT is over before RIGHT
                 return std::strong_ordering::less; // &true?
             if (std::holds_alternative<optInt>(content.at(i)) && std::holds_alternative<optInt>(other.content.at(i))) { //If both items are Integers
-                if (std::get<optInt>(content.at(i)).value_or(0) == std::get<optInt>(other.content.at(i)).value_or(0)) //value_or checks if the Opt has value, the comparison checks if the number in the LEFT list is higher than the one in the RIGHT list. If left doesn't have value, it wins everytime. If right doesn't have value, the function should return false
-                    continue; //Keep searching for the first "out of order" pair if they are equal
-                else if (std::get<optInt>(content.at(i)).value_or(0) < std::get<optInt>(other.content.at(i)).value_or(0))
-                    return std::strong_ordering::less;
-                else
-                    return std::strong_ordering::greater;
+                if (std::get<optInt>(content.at(i)).value_or(0) != std::get<optInt>(other.content.at(i)).value_or(0))
+                    return std::get<optInt>(content.at(i)).value_or(0) <=> std::get<optInt>(other.content.at(i)).value_or(0);
             } else if (std::holds_alternative<optList>(content.at(i)) && std::holds_alternative<optList>(other.content.at(i))) //Else if both items are Lists
             {
                 if (std::get<optList>(content.at(i)).has_value() && std::get<optList>(other.content.at(i)).has_value())
                 {
-                    if (std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).value())
-                        return std::strong_ordering::less;
-                    else if (std::get<optList>(content.at(i)).value() > std::get<optList>(other.content.at(i)).value())
-                        return std::strong_ordering::greater;
-                    //if they are equal, continue
+                    if ((std::get<optList>(content.at(i)).value() != std::get<optList>(other.content.at(i)).value()))
+                        return std::get<optList>(content.at(i)).value() <=> std::get<optList>(other.content.at(i)).value();
                 }
                 else if (!std::get<optList>(content.at(i)).has_value() && !std::get<optList>(other.content.at(i)).has_value()) //If both lists are empty
                     continue;
@@ -48,21 +42,14 @@ struct List
                     return std::strong_ordering::greater;
                 else if (!std::get<optList>(content.at(i)).has_value() && std::get<optList>(other.content.at(i)).has_value()) //If LEFT is an empty list
                     return std::strong_ordering::less;
-                //comparison_result &= std::get<optList>(content.at(i)).value() < std::get<optList>(other.content.at(i)).or_else(
-                //    [&comparison_result]() {comparison_result &= false; return std::optional<List>(0);} // maybe incorrect
-                //).value();
             }
             else if (std::holds_alternative<optList>(content.at(i))) //If LEFT item is a List, RIGHT item is an Integer
             {
                 if (std::get<optList>(content.at(i)).has_value())
                 {
                     auto& Left_list = std::get<optList>(content.at(i)).value();
-                    //comparison_result &= Left_list < List(Left_list.content.size(), std::get<optInt>(other.content.at(i)).value_or(0)); //converting right number to list
-                    if (Left_list < List(std::get<optInt>(other.content.at(i)).value_or(0)))
-                        return std::strong_ordering::less;
-                    else if (Left_list > List(std::get<optInt>(other.content.at(i)).value_or(0)))
-                        return std::strong_ordering::greater;
-
+                    if (Left_list != List(std::get<optInt>(other.content.at(i)).value_or(0)))
+                        return Left_list <=> List(std::get<optInt>(other.content.at(i)).value_or(0));
                 }
                 else //LEFT is an empty list
                     return std::strong_ordering::less;
@@ -72,11 +59,8 @@ struct List
                 if (std::get<optList>(other.content.at(i)).has_value())
                 {
                     auto& Right_list = std::get<optList>(other.content.at(i)).value();
-                    //comparison_result &= List(Right_list.content.size(), std::get<optInt>(content.at(i)).value_or(0)) < Right_list;
-                    if (List(std::get<optInt>(content.at(i)).value_or(0)) < Right_list)
-                        return std::strong_ordering::less;
-                    else if (List(std::get<optInt>(content.at(i)).value_or(0)) > Right_list)
-                        return std::strong_ordering::greater;
+                    if (List(std::get<optInt>(content.at(i)).value_or(0)) != Right_list)
+                        return List(std::get<optInt>(content.at(i)).value_or(0)) <=> Right_list;
                 }
                 else //RIGHT is an empty list
                     return std::strong_ordering::greater;
