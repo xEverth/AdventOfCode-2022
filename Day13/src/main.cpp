@@ -4,6 +4,7 @@
 #include <variant>
 #include <charconv>
 #include <compare>
+#include <set>
 
 //When comparing two values, the first value is called leftand the second value is called right.Then:
 //If both values are integers, the lower integer should come first.If the left integer is lower than the right integer, the inputs are in the right order.If the left integer is higher than the right integer, the inputs are not in the right order.Otherwise, the inputs are the same integer; continue checking the next part of the input.
@@ -174,6 +175,8 @@ List::optInt getInt(std::variant < List::optInt, List::optList > self)
 int main(int argc, char** argv) {
     std::ifstream input(FILE_PATH<13>("input"), std::ifstream::in);
     uint32_t result1 = 0, index = 1;
+    auto less = [](const List& first, const List& second) {return (first <=> second)<0;};
+    std::multiset<List, decltype(less) > all_signals;
     std::string a, b, nl;
     while (input)
     {
@@ -182,21 +185,34 @@ int main(int argc, char** argv) {
         std::getline(input, nl);
         List list1(a);
         List list2(b);
-        /*std::cout << std::boolalpha
-            << "variant has any values?"
-            << std::get<std::optional<List>>(list1.content[0]).has_value() << '\n';*/
-        std::cout   << /*"list1: " <<*/ printList(list1.content[0]) << '\n'
-                    << /*"list2: " <<*/ printList(list2.content[0]) << '\n' << std::endl;
+        //std::cout << std::boolalpha
+        //    << "variant has any values?"
+        //    << std::get<std::optional<List>>(list1.content[0]).has_value() << '\n';
+        //std::cout   << /*"list1: " <<*/ printList(list1.content[0]) << '\n'
+        //            << /*"list2: " <<*/ printList(list2.content[0]) << '\n' << std::endl;
         if (list1 < list2)
         {
-            std::cout << "True: List 1 < List 2 \t Index: " << index << '\n';
+            //std::cout << "True: List 1 < List 2 \t Index: " << index << '\n';
             result1 += index;
         }
-        else if (list1 > list2)
-            std::cout << "False: List 1 > List 2\n";
-        else
-            std::cout << "False: List 1 == List 2\n";
+        //else if (list1 > list2)
+        //    std::cout << "False: List 1 > List 2\n";
+        //else
+        //    std::cout << "False: List 1 == List 2\n";
         ++index;
+
+        all_signals.insert(a);
+        all_signals.insert(b);
     }
+    all_signals.emplace("[[2]]");
+    all_signals.emplace("[[6]]");
+    auto pos2 = all_signals.upper_bound(std::string("[[2]]"));
+    auto pos6 = all_signals.upper_bound(std::string("[[6]]"));
     std::cout << "Result 1: " << result1 << std::endl;
+    std::cout << "Result 2: " << (std::distance(all_signals.begin(), pos2)) * (std::distance(all_signals.begin(), pos6)) << std::endl;
+
+    //for (auto it = all_signals.begin(); it != all_signals.end(); ++it)
+    //{
+    //    std::cout << std::distance(all_signals.begin(), it) +1 << ": " << printList(it->content[0]) << std::endl;
+    //}
 }
